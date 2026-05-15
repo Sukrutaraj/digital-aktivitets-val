@@ -9,11 +9,9 @@ body {
   font-family: sans-serif;
   background: #f5f5f5;
   text-align: center;
-  padding: 10px;
-  max-width: 1200px;
+  padding: 20px;
+  max-width: 900px;
   margin: auto;
-
-  zoom: 0.8;
 }
 
 .section {
@@ -34,7 +32,7 @@ input[type="text"] {
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: 12px;
   margin-top: 10px;
 }
@@ -232,7 +230,7 @@ let slots = [];   // { alt, img (base64), audio (base64) }
 ══════════════════ */
 async function uploadFile(path, content, token) {
   const res = await fetch(
-    `https://api.github.com/repos/Sukrutaraj/checklist-pages/contents/${path}`,
+    `https://api.github.com/repos/Sukrutaraj/digital-aktivitets-val/contents/${path}`,
     {
       method: "PUT",
       headers: { "Authorization": `token ${token}`, "Content-Type": "application/json" },
@@ -257,27 +255,9 @@ function render() {
       <span class="slot-input-label">📷 Bild</span>
       <input type="file" accept="image/*" onchange="loadImage(event, ${i})">
       ${slot.img ? `<img src="${slot.img}" alt="${slot.alt}">` : ""}
-      <span class="slot-input-label">🎙 Spela in ljud</span>
-
-     <button class="smallBtn" onclick="startRecording(${i})">
-     🎤 Spela in
-     </button>
-
-   <button class="smallBtn"
-  onclick="playAudio(${i})"
-  ${!slot.audio ? "disabled" : ""}>
-  ▶️ Spela upp
-</button>
-
-${slot.audio ? `
-<span style="font-size:11px;color:#4CAF50">
-✔ Ljud inspelat
-</span>
-` : `
-<span style="font-size:11px;color:#999">
-Inget ljud
-</span>
-`}
+      <span class="slot-input-label">🔊 Ljud</span>
+      <input type="file" accept="audio/*" onchange="loadAudio(event, ${i})">
+      ${slot.audio ? `<span style="font-size:11px;color:#4CAF50">✔ Ljud laddat</span>` : ""}
       <span class="slot-input-label">📝 Beskrivning</span>
       <input type="text" value="${slot.alt}" placeholder="t.ex. Laga kaffe"
         oninput="slots[${i}].alt = this.value">
@@ -343,85 +323,16 @@ function loadImage(e, i) {
   reader.readAsDataURL(file);
 }
 
-
 /* ══════════════════
    AUDIO
 ══════════════════ */
-
-let mediaRecorder;
-let audioChunks = [];
-
-async function startRecording(i) {
-
-  try {
-
-    const stream = await navigator.mediaDevices.getUserMedia({
-      audio: true
-    });
-
-    audioChunks = [];
-
-    mediaRecorder = new MediaRecorder(stream);
-
-    mediaRecorder.ondataavailable = e => {
-      audioChunks.push(e.data);
-    };
-
-    mediaRecorder.onstop = () => {
-
-      const blob = new Blob(audioChunks, {
-        type: "audio/webm"
-      });
-
-      const reader = new FileReader();
-
-      reader.onload = () => {
-
-        slots[i].audio = reader.result;
-
-        render();
-
-      };
-
-      reader.readAsDataURL(blob);
-
-      stream.getTracks().forEach(track => track.stop());
-
-    };
-
-    mediaRecorder.start();
-
-    alert("🎙 Inspelning startad");
-
-    // AUTO STOP efter 5 sekunder
-    setTimeout(() => {
-
-      if (mediaRecorder.state === "recording") {
-
-        mediaRecorder.stop();
-
-      }
-
-    }, 5000);
-
-  } catch(err) {
-
-    console.error(err);
-
-    alert("Mikrofon nekades.");
-
-  }
+function loadAudio(e, i) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const r = new FileReader();
+  r.onload = () => { slots[i].audio = r.result; render(); };
+  r.readAsDataURL(file);
 }
-
-function playAudio(i) {
-
-  if (!slots[i].audio) return;
-
-  const audio = new Audio(slots[i].audio);
-
-  audio.play();
-}
-
 
 /* ══════════════════
    PREVIEW
@@ -519,14 +430,14 @@ async function createLink() {
       const imgName = `${base}-img-${i}.jpg`;
       await uploadFile(imgName, s.img.split(",")[1], token);
       await new Promise(r => setTimeout(r, 300));
-      imgUrl = `https://sukrutaraj.github.io/checklist-pages/${imgName}`;
+      imgUrl = `https://sukrutaraj.github.io/digital-aktivitets-val/${imgName}`;
     }
 
     if (s.audio) {
       const audioName = `${base}-audio-${i}.webm`;
       await uploadFile(audioName, s.audio.split(",")[1], token);
       await new Promise(r => setTimeout(r, 300));
-      audioUrl = `https://sukrutaraj.github.io/checklist-pages/${audioName}`;
+      audioUrl = `https://sukrutaraj.github.io/digital-aktivitets-val/${audioName}`;
     }
 
     uploadedSlots.push({ alt: s.alt, imgUrl, audioUrl });
@@ -599,7 +510,7 @@ async function createLink() {
     token
   );
 
-  const url = `https://sukrutaraj.github.io/checklist-pages/${base}.html`;
+  const url = `https://sukrutaraj.github.io/digital-aktivitets-val/${base}.html`;
 
   let copied = false;
   try { await navigator.clipboard.writeText(url); copied = true; } catch(e) {}
