@@ -257,9 +257,27 @@ function render() {
       <span class="slot-input-label">📷 Bild</span>
       <input type="file" accept="image/*" onchange="loadImage(event, ${i})">
       ${slot.img ? `<img src="${slot.img}" alt="${slot.alt}">` : ""}
-      <span class="slot-input-label">🔊 Ljud</span>
-      <input type="file" accept="audio/*" onchange="loadAudio(event, ${i})">
-      ${slot.audio ? `<span style="font-size:11px;color:#4CAF50">✔ Ljud laddat</span>` : ""}
+      <span class="slot-input-label">🎙 Spela in ljud</span>
+
+     <button class="smallBtn" onclick="startRecording(${i})">
+     🎤 Spela in
+     </button>
+
+   <button class="smallBtn"
+  onclick="playAudio(${i})"
+  ${!slot.audio ? "disabled" : ""}>
+  ▶️ Spela upp
+</button>
+
+${slot.audio ? `
+<span style="font-size:11px;color:#4CAF50">
+✔ Ljud inspelat
+</span>
+` : `
+<span style="font-size:11px;color:#999">
+Inget ljud
+</span>
+`}
       <span class="slot-input-label">📝 Beskrivning</span>
       <input type="text" value="${slot.alt}" placeholder="t.ex. Laga kaffe"
         oninput="slots[${i}].alt = this.value">
@@ -325,16 +343,85 @@ function loadImage(e, i) {
   reader.readAsDataURL(file);
 }
 
+
 /* ══════════════════
    AUDIO
 ══════════════════ */
-function loadAudio(e, i) {
-  const file = e.target.files[0];
-  if (!file) return;
-  const r = new FileReader();
-  r.onload = () => { slots[i].audio = r.result; render(); };
-  r.readAsDataURL(file);
+
+let mediaRecorder;
+let audioChunks = [];
+
+async function startRecording(i) {
+
+  try {
+
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: true
+    });
+
+    audioChunks = [];
+
+    mediaRecorder = new MediaRecorder(stream);
+
+    mediaRecorder.ondataavailable = e => {
+      audioChunks.push(e.data);
+    };
+
+    mediaRecorder.onstop = () => {
+
+      const blob = new Blob(audioChunks, {
+        type: "audio/webm"
+      });
+
+      const reader = new FileReader();
+
+      reader.onload = () => {
+
+        slots[i].audio = reader.result;
+
+        render();
+
+      };
+
+      reader.readAsDataURL(blob);
+
+      stream.getTracks().forEach(track => track.stop());
+
+    };
+
+    mediaRecorder.start();
+
+    alert("🎙 Inspelning startad");
+
+    // AUTO STOP efter 5 sekunder
+    setTimeout(() => {
+
+      if (mediaRecorder.state === "recording") {
+
+        mediaRecorder.stop();
+
+      }
+
+    }, 5000);
+
+  } catch(err) {
+
+    console.error(err);
+
+    alert("Mikrofon nekades.");
+
+  }
 }
+
+function playAudio(i) {
+
+  if (!slots[i].audio) return;
+
+  const audio = new Audio(slots[i].audio);
+
+  audio.play();
+}
+
 
 /* ══════════════════
    PREVIEW
