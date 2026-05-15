@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Digital Aktivitetsval</title>
+<style>
+body {
+  font-family: sans-serif;
+  background: #f5f5f5;
+  text-align: center;
+  padding: 10px;
+  max-width: 1200px;
+  margin: auto;
+
+  zoom: 0.8;
+}
+
+.section {
+  background: white;
+  padding: 12px;
+  margin: 10px auto;
+  border-radius: 12px;
+}
+
+input[type="text"] {
+  width: 90%;
+  padding: 8px;
+  margin: 6px;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+  font-size: 15px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.slot {
+  background: #fafafa;
+  border: 1px solid #eee;
+  border-radius: 10px;
+  padding: 10px;
+  text-align: left;
+}
+
+.slot-label {
+  font-weight: bold;
+  font-size: 13px;
+  margin-bottom: 6px;
+  color: #555;
+}
+
+.slot img {
+  width: 100%;
+  max-height: 100px;
+  object-fit: contain;
+  border-radius: 8px;
+  margin-top: 6px;
+  display: block;
+}
+
+.slot-input-label {
+  font-size: 12px;
+  color: #888;
+  margin-top: 8px;
+  display: block;
+}
+
+.slot input[type="file"] {
+  width: 100%;
+  font-size: 12px;
+  margin-top: 2px;
+}
+
+.slot input[type="text"] {
+  width: 100%;
+  padding: 5px 8px;
+  font-size: 13px;
+  margin: 4px 0 0 0;
+  border-radius: 6px;
+  border: 1px solid #ddd;
+}
+
+.smallBtn {
+  background: #eee;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  margin: 3px;
+  border: none;
+  font-size: 13px;
+}
+
+.smallBtn:active { transform: scale(0.95); }
+
+.tool-row {
+  display: flex;
+  justify-content: center;
+  gap: 25px;
+  margin-top: 15px;
+  flex-wrap: wrap;
+}
+
+.tool-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+}
+
+.tool-btn .icon {
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #333;
+  font-size: 26px;
+  background: white;
+}
+
+.tool-btn .label {
+  margin-top: 6px;
+  font-size: 13px;
+}
+
+button, .smallBtn {
+  transition: all 0.1s ease;
+}
+button:active { transform: scale(0.95); }
+.tool-btn:active .icon { transform: scale(0.92); background: #eee; }
+
+#add-slot-btn {
+  margin-top: 10px;
+  padding: 8px 18px;
+  background: #eee;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+/* Preview */
+#preview {
+  display: none;
+  text-align: left;
+}
+
+.preview-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-top: 10px;
+}
+
+.preview-cell {
+  background: white;
+  border-radius: 10px;
+  padding: 10px;
+  text-align: center;
+  border: 1px solid #eee;
+}
+
+.preview-cell img {
+  width: 100%;
+  max-height: 90px;
+  object-fit: contain;
+  border-radius: 8px;
+}
+
+.preview-cell p {
+  margin-top: 6px;
+  font-size: 13px;
+  color: #333;
+}
+</style>
+</head>
+<body>
+
+<h2>Digital Aktivitetsval</h2>
+
+<div class="section">
+  <input id="title" type="text" placeholder="Titel, t.ex. Morgonval">
+</div>
+
+<div class="section">
+  <div class="grid" id="slots"></div>
+  <button id="add-slot-btn" onclick="addSlot()">➕ Lägg till ruta</button>
+</div>
+
+<div class="tool-row">
+
+  <div class="tool-btn" onclick="exportJSON()">
+    <div class="icon">⬇️</div>
+    <div class="label">Ladda ner JSON</div>
+  </div>
+
+  <div class="tool-btn" onclick="importJSON()">
+    <div class="icon">⬆️</div>
+    <div class="label">Ladda upp JSON</div>
+  </div>
+
+  <div class="tool-btn" onclick="createLink()">
+    <div class="icon">🔗</div>
+    <div class="label">Skapa länk</div>
+  </div>
+
+</div>
+
+<br>
+<button onclick="generatePreview()">▶️ Förhandsgranska</button>
+
+<div id="preview" class="section">
+  <h3 id="preview-title"></h3>
+  <div class="preview-grid" id="preview-grid"></div>
+</div>
+
+<script>
+
+/* ══════════════════
+   STATE
+══════════════════ */
+let slots = [];   // { alt, img (base64), audio (base64) }
+
+/* ══════════════════
+   UPLOAD HELPER
+══════════════════ */
+async function uploadFile(path, content, token) {
+  const res = await fetch(
+    `https://api.github.com/repos/Sukrutaraj/checklist-pages/contents/${path}`,
+    {
+      method: "PUT",
+      headers: { "Authorization": `token ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ message: "upload aktivitetsval", content })
+    }
+  );
+  return await res.json();
+}
+
+/* ══════════════════
+   RENDER
+══════════════════ */
+function render() {
+  const container = document.getElementById("slots");
+  container.innerHTML = "";
+
+  slots.forEach((slot, i) => {
+    const div = document.createElement("div");
+    div.className = "slot";
+    div.innerHTML = `
+      <div class="slot-label">Ruta ${i + 1}</div>
+      <span class="slot-input-label">📷 Bild</span>
+      <input type="file" accept="image/*" onchange="loadImage(event, ${i})">
+      ${slot.img ? `<img src="${slot.img}" alt="${slot.alt}">` : ""}
+      <span class="slot-input-label">🔊 Ljud</span>
+      <input type="file" accept="audio/*" onchange="loadAudio(event, ${i})">
+      ${slot.audio ? `<span style="font-size:11px;color:#4CAF50">✔ Ljud laddat</span>` : ""}
+      <span class="slot-input-label">📝 Beskrivning</span>
+      <input type="text" value="${slot.alt}" placeholder="t.ex. Laga kaffe"
+        oninput="slots[${i}].alt = this.value">
+      <div style="margin-top:8px;text-align:right">
+        <button class="smallBtn" onclick="moveUp(${i})">🔼</button>
+        <button class="smallBtn" onclick="moveDown(${i})">🔽</button>
+        <button class="smallBtn" onclick="removeSlot(${i})">🗑</button>
+      </div>
+    `;
+    container.appendChild(div);
+  });
+}
+
+/* ══════════════════
+   SLOTS
+══════════════════ */
+function addSlot() {
+  slots.push({ alt: "", img: "", audio: "" });
+  render();
+}
+
+function removeSlot(i) {
+  slots.splice(i, 1);
+  render();
+}
+
+function moveUp(i) {
+  if (i === 0) return;
+  [slots[i], slots[i - 1]] = [slots[i - 1], slots[i]];
+  render();
+}
+
+function moveDown(i) {
+  if (i === slots.length - 1) return;
+  [slots[i], slots[i + 1]] = [slots[i + 1], slots[i]];
+  render();
+}
+
+/* ══════════════════
+   IMAGE (komprimering)
+══════════════════ */
+function loadImage(e, i) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const img = new Image();
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    img.onload = function() {
+      const canvas = document.createElement("canvas");
+      const maxW = 600;
+      let w = img.width, h = img.height;
+      if (w > maxW) { h = h * maxW / w; w = maxW; }
+      canvas.width = w; canvas.height = h;
+      canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+      canvas.toBlob(function(blob) {
+        const r2 = new FileReader();
+        r2.onload = function() { slots[i].img = r2.result; render(); };
+        r2.readAsDataURL(blob);
+      }, "image/jpeg", 0.7);
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+/* ══════════════════
+   AUDIO
+══════════════════ */
+function loadAudio(e, i) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const r = new FileReader();
+  r.onload = () => { slots[i].audio = r.result; render(); };
+  r.readAsDataURL(file);
+}
+
+/* ══════════════════
+   PREVIEW
+══════════════════ */
+function generatePreview() {
+  const title = document.getElementById("title").value.trim() || "Aktivitetsval";
+  document.getElementById("preview-title").textContent = title;
+  const grid = document.getElementById("preview-grid");
+  grid.innerHTML = "";
+  slots.forEach((slot, i) => {
+    if (!slot.img && !slot.alt) return;
+    const cell = document.createElement("div");
+    cell.className = "preview-cell";
+    cell.innerHTML = `
+      ${slot.img ? `<img src="${slot.img}" alt="${slot.alt}">` : ""}
+      <p>${slot.alt || ""}</p>
+      ${slot.audio ? `<button onclick="new Audio('${slot.audio}').play()">🔊</button>` : ""}
+    `;
+    grid.appendChild(cell);
+  });
+  document.getElementById("preview").style.display = "block";
+}
+
+/* ══════════════════
+   JSON EXPORT / IMPORT
+══════════════════ */
+function exportJSON() {
+  const data = {
+    title: document.getElementById("title").value.trim(),
+    slots
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "aktivitetsval.json";
+  a.click();
+}
+
+function importJSON() {
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = "application/json";
+  input.onchange = e => {
+    const r = new FileReader();
+    r.onload = () => {
+      try {
+        const data = JSON.parse(r.result);
+        document.getElementById("title").value = data.title || "";
+        slots = (data.slots || []).map(s => ({
+          alt:   s.alt   || "",
+          img:   s.img   || "",
+          audio: s.audio || ""
+        }));
+        render();
+        alert("Aktivitetsval laddat!");
+      } catch(e) { alert("Ogiltig fil"); }
+    };
+    r.readAsText(e.target.files[0]);
+  };
+  input.click();
+}
+
+/* ══════════════════
+   SKAPA DELBAR LÄNK
+══════════════════ */
+async function createLink() {
+  const title = document.getElementById("title").value.trim() || "Aktivitetsval";
+  const filled = slots.filter(s => s.img || s.alt);
+
+  if (filled.length === 0) {
+    alert("Lägg till minst en ruta med bild eller beskrivning.");
+    return;
+  }
+
+  let token = localStorage.getItem("gh_token");
+  if (!token) {
+    token = prompt("Klistra in GitHub token:");
+    if (!token) return;
+    localStorage.setItem("gh_token", token);
+  }
+
+  const id = Date.now();
+  const base = `aktivitetsval-${id}`;
+
+  // Upload images & audio, build slots data
+  const uploadedSlots = [];
+
+  for (let i = 0; i < slots.length; i++) {
+    const s = slots[i];
+    if (!s.img && !s.alt) continue;
+
+    let imgUrl = "", audioUrl = "";
+
+    if (s.img) {
+      const imgName = `${base}-img-${i}.jpg`;
+      await uploadFile(imgName, s.img.split(",")[1], token);
+      await new Promise(r => setTimeout(r, 300));
+      imgUrl = `https://sukrutaraj.github.io/checklist-pages/${imgName}`;
+    }
+
+    if (s.audio) {
+      const audioName = `${base}-audio-${i}.webm`;
+      await uploadFile(audioName, s.audio.split(",")[1], token);
+      await new Promise(r => setTimeout(r, 300));
+      audioUrl = `https://sukrutaraj.github.io/checklist-pages/${audioName}`;
+    }
+
+    uploadedSlots.push({ alt: s.alt, imgUrl, audioUrl });
+  }
+
+  // Build shared HTML using safe string arrays
+  const safeTitle = title.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+  const css = [
+    "body{font-family:sans-serif;background:#f2f2f2;padding:20px;max-width:960px;margin:auto;}",
+    "h1{text-align:center;margin-bottom:20px;}",
+    ".grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:16px;}",
+    ".cell{background:white;border-radius:14px;padding:14px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.08);cursor:pointer;transition:transform 0.15s,box-shadow 0.15s;}",
+    ".cell:active{transform:scale(0.96);box-shadow:0 1px 4px rgba(0,0,0,0.1);}",
+    ".cell img{width:100%;max-height:120px;object-fit:contain;border-radius:10px;display:block;margin:0 auto;}",
+    ".cell p{margin:10px 0 0;font-size:15px;font-weight:600;color:#333;}",
+    ".selected{outline:4px solid #4CAF50;}"
+  ].join("\n");
+
+  const slotsJson = JSON.stringify(uploadedSlots);
+
+  const scriptLines = [
+    "var slots = " + slotsJson + ";",
+    "var selected = null;",
+    "function render(){",
+    "  var grid = document.getElementById('grid');",
+    "  grid.innerHTML = '';",
+    "  slots.forEach(function(s, i){",
+    "    var cell = document.createElement('div');",
+    "    cell.className = 'cell';",
+    "    cell.id = 'cell-' + i;",
+    "    var html = '';",
+    "    if(s.imgUrl) html += '<img src=\"' + s.imgUrl + '\" alt=\"' + s.alt + '\">';",
+    "    html += '<p>' + s.alt + '</p>';",
+    "    cell.innerHTML = html;",
+    "    cell.onclick = function(){",
+    "      document.querySelectorAll('.cell').forEach(function(c){ c.classList.remove('selected'); });",
+    "      cell.classList.add('selected');",
+    "      selected = s;",
+    "      if(s.audioUrl){ var a = new Audio(s.audioUrl); a.play(); }",
+    "    };",
+    "    grid.appendChild(cell);",
+    "  });",
+    "}",
+    "render();"
+  ].join("\n");
+
+  const sharedHtml = [
+    "<!DOCTYPE html>",
+    "<html lang='sv'>",
+    "<head>",
+    "<meta charset='UTF-8'>",
+    "<meta name='viewport' content='width=device-width, initial-scale=1.0'>",
+    "<title>" + safeTitle + "</title>",
+    "<style>", css, "</style>",
+    "</head>",
+    "<body>",
+    "<h1>" + safeTitle + "</h1>",
+    "<div class='grid' id='grid'></div>",
+    "<script>",
+    scriptLines,
+    "<" + "/script>",
+    "</body>",
+    "</html>"
+  ].join("\n");
+
+  await uploadFile(
+    `${base}.html`,
+    btoa(unescape(encodeURIComponent(sharedHtml))),
+    token
+  );
+
+  const url = `https://sukrutaraj.github.io/checklist-pages/${base}.html`;
+
+  let copied = false;
+  try { await navigator.clipboard.writeText(url); copied = true; } catch(e) {}
+
+  alert(
+    "Länk skapad!\n\n" + url +
+    "\n\n" + (copied ? "✔ Kopierad" : "⚠️ Kopiera manuellt") +
+    "\n\nVänta 15–20 sek innan du öppnar."
+  );
+
+  setTimeout(() => window.open(url, "_blank"), 15000);
+}
+
+/* ══════════════════
+   INIT
+══════════════════ */
+// Start with 8 slots
+for (let i = 0; i < 8; i++) slots.push({ alt: "", img: "", audio: "" });
+render();
+
+</script>
+</body>
+</html>
