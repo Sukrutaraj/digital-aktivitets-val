@@ -255,9 +255,17 @@ function render() {
       <span class="slot-input-label">📷 Bild</span>
       <input type="file" accept="image/*" onchange="loadImage(event, ${i})">
       ${slot.img ? `<img src="${slot.img}" alt="${slot.alt}">` : ""}
-      <span class="slot-input-label">🔊 Ljud</span>
-      <input type="file" accept="audio/*" onchange="loadAudio(event, ${i})">
-      ${slot.audio ? `<span style="font-size:11px;color:#4CAF50">✔ Ljud laddat</span>` : ""}
+      <span class="slot-input-label">🎙 Ljud</span>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;">
+        <button class="smallBtn" id="rec-btn-${i}" onclick="toggleRecording(${i})">🎤 Spela in</button>
+        <button class="smallBtn" onclick="playAudio(${i})" ${!slot.audio ? "disabled style='opacity:0.4'" : ""}>▶️ Lyssna</button>
+        ${slot.audio
+          ? `<button class="smallBtn" onclick="slots[${i}].audio='';render()" style="color:#c00">🗑 Ta bort</button>`
+          : ""}
+      </div>
+      ${slot.audio
+        ? `<span style="font-size:11px;color:#4CAF50;margin-top:4px;display:block">✔ Ljud inspelat</span>`
+        : `<span style="font-size:11px;color:#999;margin-top:4px;display:block">Inget ljud ännu</span>`}
       <span class="slot-input-label">📝 Beskrivning</span>
       <input type="text" value="${slot.alt}" placeholder="t.ex. Laga kaffe"
         oninput="slots[${i}].alt = this.value">
@@ -324,14 +332,64 @@ function loadImage(e, i) {
 }
 
 /* ══════════════════
-   AUDIO
+   RECORDING STATE
 ══════════════════ */
-function loadAudio(e, i) {
-  const file = e.target.files[0];
-  if (!file) return;
-  const r = new FileReader();
-  r.onload = () => { slots[i].audio = r.result; render(); };
-  r.readAsDataURL(file);
+let mediaRecorder = null;
+let audioChunks = [];
+let recordingIndex = null;
+
+async function startRecording(i) {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    audioChunks = [];
+    recordingIndex = i;
+    mediaRecorder = new MediaRecorder(stream);
+
+    mediaRecorder.ondataavailable = e => { audioChunks.push(e.data); };
+
+    mediaRecorder.onstop = () => {
+      const blob = new Blob(audioChunks, { type: "audio/webm" });
+      const reader = new FileReader();
+      reader.onload = () => { slots[i].audio = reader.result; render(); };
+      reader.readAsDataURL(blob);
+      stream.getTracks().forEach(t => t.stop());
+    };
+
+    mediaRecorder.start();
+
+    // Update button state
+    const btn = document.getElementById("rec-btn-" + i);
+    if (btn) { btn.textContent = "⏹ Stoppa"; btn.style.background = "#ffcccc"; }
+
+    // Auto-stop after 10 seconds
+    setTimeout(() => {
+      if (mediaRecorder && mediaRecorder.state === "recording") stopRecording();
+    }, 10000);
+
+  } catch(err) {
+    alert("Mikrofon nekades eller stöds inte.");
+  }
+}
+
+function stopRecording() {
+  if (mediaRecorder && mediaRecorder.state === "recording") {
+    mediaRecorder.stop();
+    const btn = document.getElementById("rec-btn-" + recordingIndex);
+    if (btn) { btn.textContent = "🎤 Spela in"; btn.style.background = "#eee"; }
+  }
+}
+
+function toggleRecording(i) {
+  if (mediaRecorder && mediaRecorder.state === "recording") {
+    stopRecording();
+  } else {
+    startRecording(i);
+  }
+}
+
+function playAudio(i) {
+  if (!slots[i].audio) return;
+  new Audio(slots[i].audio).play();
 }
 
 /* ══════════════════
