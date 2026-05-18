@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang='sv'>
+<head>
+<meta charset='UTF-8'>
+<meta name='viewport' content='width=device-width, initial-scale=1.0'>
+<title>IT Projekt</title>
+<style>
+body{font-family:sans-serif;background:#f2f2f2;padding:20px;max-width:960px;margin:auto;}
+h1{text-align:center;margin-bottom:20px;}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:16px;}
+.cell{background:white;border-radius:14px;padding:14px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.08);transition:transform 0.15s,box-shadow 0.15s;}
+.cell:active{transform:scale(0.96);}
+.cell img{width:100%;max-height:120px;object-fit:contain;border-radius:10px;display:block;margin:0 auto;cursor:pointer;}
+.cell p{margin:8px 0 6px;font-size:15px;font-weight:600;color:#333;}
+.cell.selected{outline:4px solid #4CAF50;}
+.audio-btn{display:inline-block;margin-top:4px;padding:8px 18px;background:#4CAF50;color:white;border:none;border-radius:50px;font-size:18px;cursor:pointer;width:100%;}
+.audio-btn:active{background:#388E3C;transform:scale(0.96);}
+</style>
+</head>
+<body>
+<h1>IT Projekt</h1>
+<div class='grid' id='grid'></div>
+<script>
+var slots = [{"alt":"Otydlighet och Kaos","imgUrl":"https://sukrutaraj.github.io/digital-aktivitets-val/aktivitetsval-1779110980863-img-0.jpg","audioUrl":"https://sukrutaraj.github.io/digital-aktivitets-val/aktivitetsval-1779110980863-audio-0.webm"},{"alt":"Vi får tänka om helt enkelt","imgUrl":"https://sukrutaraj.github.io/digital-aktivitets-val/aktivitetsval-1779110980863-img-1.jpg","audioUrl":"https://sukrutaraj.github.io/digital-aktivitets-val/aktivitetsval-1779110980863-audio-1.webm"},{"alt":"Ersätta osynlig stöd","imgUrl":"https://sukrutaraj.github.io/digital-aktivitets-val/aktivitetsval-1779110980863-img-2.jpg","audioUrl":"https://sukrutaraj.github.io/digital-aktivitets-val/aktivitetsval-1779110980863-audio-2.webm"},{"alt":"Träna och handleda","imgUrl":"https://sukrutaraj.github.io/digital-aktivitets-val/aktivitetsval-1779110980863-img-3.jpg","audioUrl":"https://sukrutaraj.github.io/digital-aktivitets-val/aktivitetsval-1779110980863-audio-3.webm"},{"alt":"Effekterna ser man ganska direkt","imgUrl":"https://sukrutaraj.github.io/digital-aktivitets-val/aktivitetsval-1779110980863-img-4.jpg","audioUrl":"https://sukrutaraj.github.io/digital-aktivitets-val/aktivitetsval-1779110980863-audio-4.webm"},{"alt":"Sprida kunskap","imgUrl":"https://sukrutaraj.github.io/digital-aktivitets-val/aktivitetsval-1779110980863-img-5.jpg","audioUrl":"https://sukrutaraj.github.io/digital-aktivitets-val/aktivitetsval-1779110980863-audio-5.webm"},{"alt":"Rollen är tillfälig","imgUrl":"https://sukrutaraj.github.io/digital-aktivitets-val/aktivitetsval-1779110980863-img-6.jpg","audioUrl":"https://sukrutaraj.github.io/digital-aktivitets-val/aktivitetsval-1779110980863-audio-6.webm"},{"alt":"Målbild","imgUrl":"https://sukrutaraj.github.io/digital-aktivitets-val/aktivitetsval-1779110980863-img-7.jpg","audioUrl":"https://sukrutaraj.github.io/digital-aktivitets-val/aktivitetsval-1779110980863-audio-7.webm"}];
+function selectCell(cell) {
+  document.querySelectorAll('.cell').forEach(function(c){ c.classList.remove('selected'); });
+  cell.classList.add('selected');
+}
+function playAudio(audioUrl, cell) {
+  selectCell(cell);
+  var a = new Audio(audioUrl);
+  a.play().catch(function(e){ console.log('Audio error:', e); });
+}
+function render(){
+  var grid = document.getElementById('grid');
+  grid.innerHTML = '';
+  slots.forEach(function(s, i){
+    var cell = document.createElement('div');
+    cell.className = 'cell';
+    cell.id = 'cell-' + i;
+    var html = '';
+    if(s.imgUrl) html += '<img src="' + s.imgUrl + '" alt="' + s.alt + '" onclick="selectCell(document.getElementById(\"cell-' + i + '\"))">';
+    html += '<p>' + s.alt + '</p>';
+    if(s.audioUrl) {
+      html += '<button class="audio-btn" onclick="playAudio(\"' + s.audioUrl + '\", document.getElementById(\"cell-' + i + '\"))">🔊 Spela</button>';
+    }
+    cell.innerHTML = html;
+    grid.appendChild(cell);
+  });
+}
+render();
+</script>
+</body>
+</html>
