@@ -226,18 +226,20 @@ button:active { transform: scale(0.95); }
 let slots = [];   // { alt, img (base64), audio (base64) }
 
 /* ══════════════════
-   UPLOAD HELPER
+   UPLOAD VIA VERCEL
 ══════════════════ */
-async function uploadFile(path, content, token) {
+async function uploadFile(path, content, repo) {
   const res = await fetch(
-    `https://api.github.com/repos/Sukrutaraj/digital-aktivitets-val/contents/${path}`,
+    "https://upload-api-kappa.vercel.app/api/upload",
     {
-      method: "PUT",
-      headers: { "Authorization": `token ${token}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ message: "upload aktivitetsval", content })
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ path, content, repo })
     }
   );
-  return await res.json();
+  const data = await res.json();
+  if (!data.ok) throw new Error(data.error || "Upload failed");
+  return data;
 }
 
 /* ══════════════════
@@ -465,15 +467,9 @@ async function createLink() {
     return;
   }
 
-  let token = localStorage.getItem("gh_token");
-  if (!token) {
-    token = prompt("Klistra in GitHub token:");
-    if (!token) return;
-    localStorage.setItem("gh_token", token);
-  }
-
   const id = Date.now();
-  const base = `aktivitetsval-${id}`;
+  const base = "aktivitetsval-" + id;
+  const repo = "Sukrutaraj/digital-aktivitets-val";
 
   // Upload images & audio, build slots data
   const uploadedSlots = [];
@@ -486,14 +482,14 @@ async function createLink() {
 
     if (s.img) {
       const imgName = `${base}-img-${i}.jpg`;
-      await uploadFile(imgName, s.img.split(",")[1], token);
+      await uploadFile(imgName, s.img.split(",")[1], repo);
       await new Promise(r => setTimeout(r, 300));
       imgUrl = `https://sukrutaraj.github.io/digital-aktivitets-val/${imgName}`;
     }
 
     if (s.audio) {
       const audioName = `${base}-audio-${i}.webm`;
-      await uploadFile(audioName, s.audio.split(",")[1], token);
+      await uploadFile(audioName, s.audio.split(",")[1], repo);
       await new Promise(r => setTimeout(r, 300));
       audioUrl = `https://sukrutaraj.github.io/digital-aktivitets-val/${audioName}`;
     }
@@ -563,9 +559,9 @@ async function createLink() {
   ].join("\n");
 
   await uploadFile(
-    `${base}.html`,
+    base + ".html",
     btoa(unescape(encodeURIComponent(sharedHtml))),
-    token
+    repo
   );
 
   const url = `https://sukrutaraj.github.io/digital-aktivitets-val/${base}.html`;
