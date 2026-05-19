@@ -385,4 +385,20 @@ async function createLink() {
     await uploadFile(base+".html", btoa(unescape(encodeURIComponent(sharedHtml))), repo);
 
     var url="https://sukrutaraj.github.io/digital-aktivitets-val/"+base+".html";
-    var copied=
+    var copied=false;
+    try{ await navigator.clipboard.writeText(url); copied=true; }catch(e){}
+
+    alert("Länk skapad!\n\n"+url+"\n\n"+(copied?"✔ Kopierad":"⚠️ Kopiera manuellt")+"\n\nVänta 15–20 sek.");
+    setTimeout(function(){window.open(url,"_blank");},15000);
+
+  }catch(err){
+    alert("Fel: "+err.message);
+  }
+}
+
+/* ── INIT ── */
+for(var i=0;i<8;i++) slots.push({alt:"",img:"",audio:"",audioExt:""});
+render();
+</script>
+</body>
+</html>
