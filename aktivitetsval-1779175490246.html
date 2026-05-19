@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang='sv'>
+<head>
+<meta charset='UTF-8'>
+<meta name='viewport' content='width=device-width,initial-scale=1.0'>
+<title>IT projekt</title>
+<style>
+body{font-family:sans-serif;background:#f2f2f2;padding:20px;max-width:960px;margin:auto;}
+h1{text-align:center;margin-bottom:20px;}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:16px;}
+.cell{background:white;border-radius:14px;padding:14px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.08);}
+.cell img{width:100%;max-height:120px;object-fit:contain;border-radius:10px;display:block;margin:0 auto;}
+.cell p{margin:8px 0 6px;font-size:15px;font-weight:600;color:#333;}
+.cell.selected{outline:4px solid #4CAF50;}
+.play-btn{display:block;width:100%;margin-top:6px;padding:10px;background:#4CAF50;color:white;border:none;border-radius:50px;font-size:16px;cursor:pointer;}
+.play-btn:active{background:#388E3C;transform:scale(0.96);}
+</style>
+</head>
+<body>
+<h1>IT projekt</h1>
+<div class='grid' id='grid'></div>
+<script>
+var slots=[{"alt":"Målbild","imgUrl":"https://sukrutaraj.github.io/digital-aktivitets-val/aktivitetsval-1779175490246-img-0.jpg","audioUrl":"https://sukrutaraj.github.io/digital-aktivitets-val/aktivitetsval-1779175490246-audio-0.webm"}];
+var cur=null;
+function play(url,cell){
+  document.querySelectorAll('.cell').forEach(function(c){c.classList.remove('selected');});
+  if(cell)cell.classList.add('selected');
+
+  if(cur){
+    cur.pause();
+    cur.currentTime=0;
+    cur.src='';
+  }
+
+  cur=document.createElement('audio');
+  cur.setAttribute('playsinline','');
+  cur.preload='auto';
+  cur.src=url+'?v=' + Date.now();
+
+  document.body.appendChild(cur);
+
+  var playPromise = cur.play();
+
+  if(playPromise!==undefined){
+    playPromise.catch(function(err){
+      alert('Kunde inte spela ljud');
+      console.log(err);
+    });
+  }
+}
+function render(){
+  var g=document.getElementById('grid');g.innerHTML='';
+  slots.forEach(function(s,i){
+    var c=document.createElement('div');c.className='cell';c.id='c'+i;
+    var h='';
+    if(s.imgUrl)h+='<img src="'+s.imgUrl+'" alt="'+s.alt+'">';
+    h+='<p>'+(s.alt||'')+'</p>';
+    if(s.audioUrl)h+='<button class="play-btn" onclick="play(\"'+s.audioUrl+'\",document.getElementById(\"c'+i+'\"))">🔊 Spela</button>';
+    c.innerHTML=h;g.appendChild(c);
+  });
+}
+render();
+</script>
+</body>
+</html>
