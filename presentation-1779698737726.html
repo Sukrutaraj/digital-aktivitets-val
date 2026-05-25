@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang='sv'>
+<head>
+<meta charset='UTF-8'>
+<meta name='viewport' content='width=device-width,initial-scale=1.0,user-scalable=no'>
+<title>Steg för steg guide till Digital Samtalsyta verktyget</title>
+<style>
+body{margin:0;background:#1a1a2e;height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:sans-serif;overflow:hidden;}
+.slide{display:none;flex-direction:column;align-items:center;justify-content:center;width:100%;max-width:800px;padding:20px;text-align:center;}
+.slide.active{display:flex;}
+.slide img{max-width:90vw;max-height:60vh;object-fit:contain;border-radius:16px;box-shadow:0 8px 32px rgba(0,0,0,0.5);}
+.slide-label{font-size:clamp(18px,3.5vw,32px);font-weight:700;color:#fff;margin-top:16px;}
+.play-btn{margin-top:14px;padding:12px 30px;background:#4CAF50;color:white;border:none;border-radius:50px;font-size:clamp(15px,2.5vw,20px);cursor:pointer;}
+.play-btn:active{background:#388E3C;transform:scale(0.96);}
+.nav{position:fixed;bottom:28px;left:0;right:0;display:flex;align-items:center;justify-content:center;gap:16px;}
+.nav-btn{width:52px;height:52px;border-radius:50%;border:2px solid rgba(255,255,255,0.25);background:rgba(255,255,255,0.1);color:white;font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.nav-btn:hover{background:rgba(255,255,255,0.2);}
+.nav-btn:active{transform:scale(0.92);}
+.nav-btn:disabled{opacity:0.2;cursor:default;}
+.counter{color:rgba(255,255,255,0.5);font-size:13px;min-width:44px;text-align:center;}
+.progress{position:fixed;top:0;left:0;height:4px;background:#4CAF50;transition:width 0.3s;}
+.fs-btn{position:fixed;top:14px;right:16px;width:36px;height:36px;border-radius:50%;border:1px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.5);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.fs-btn:hover{background:rgba(255,255,255,0.15);color:#fff;}
+</style>
+</head>
+<body>
+<div class='progress' id='progress' style='width:0%'></div>
+<script type='application/json' id='slot-data'>[{"alt":"Bidrar till ökad delaktighet och inkludering","imgUrl":"https://sukrutaraj.github.io/digital-aktivitets-val/presentation-1779698737726-img-0.jpg","audioUrl":""},{"alt":"Forma det utifrån individens specifika behov","imgUrl":"https://sukrutaraj.github.io/digital-aktivitets-val/presentation-1779698737726-img-1.jpg","audioUrl":""},{"alt":"Kan användas på flera olika sätt","imgUrl":"https://sukrutaraj.github.io/digital-aktivitets-val/presentation-1779698737726-img-2.jpg","audioUrl":""},{"alt":"Varje svar är viktig, och varje person räknas","imgUrl":"https://sukrutaraj.github.io/digital-aktivitets-val/presentation-1779698737726-img-3.jpg","audioUrl":""}]</script>
+<div id='slides'></div>
+<button class='fs-btn' id='fs-btn' title='Fullskärm'>⛶</button>
+<nav class='nav'>
+  <button class='nav-btn' id='prev-btn' disabled>&#8592;</button>
+  <span class='counter' id='counter'>1 / 1</span>
+  <button class='nav-btn' id='next-btn'>&#8594;</button>
+</nav>
+<script>
+var slots=JSON.parse(document.getElementById('slot-data').textContent);
+var cur=0,currentAudio=null;
+function play(url){
+  if(currentAudio){currentAudio.pause();currentAudio.currentTime=0;}
+  currentAudio=new Audio(url);
+  var p=currentAudio.play();
+  if(p&&p.catch)p.catch(function(e){console.log(e);});
+}
+function showSlide(n){
+  var slides=document.querySelectorAll('.slide');
+  if(n<0||n>=slides.length)return;
+  slides.forEach(function(s){s.classList.remove('active');});
+  slides[n].classList.add('active');
+  cur=n;
+  document.getElementById('prev-btn').disabled=(cur===0);
+  document.getElementById('next-btn').disabled=(cur===slides.length-1);
+  document.getElementById('counter').textContent=(cur+1)+' / '+slides.length;
+  document.getElementById('progress').style.width=(Math.round(((cur+1)/slides.length)*100))+'%';
+  if(currentAudio){currentAudio.pause();currentAudio.currentTime=0;}
+}
+function render(){
+  var container=document.getElementById('slides');container.innerHTML='';
+  slots.forEach(function(s,i){
+    var slide=document.createElement('div');slide.className='slide'+(i===0?' active':'');
+    if(s.imgUrl){var img=document.createElement('img');img.src=s.imgUrl;img.alt=s.alt||'';slide.appendChild(img);}
+    if(s.alt){var lbl=document.createElement('div');lbl.className='slide-label';lbl.textContent=s.alt;slide.appendChild(lbl);}
+    if(s.audioUrl){
+      var btn=document.createElement('button');btn.className='play-btn';btn.textContent='\ud83d\udd0a Spela ljud';
+      (function(url){btn.onclick=function(){play(url);};})(s.audioUrl);
+      slide.appendChild(btn);
+    }
+    container.appendChild(slide);
+  });
+  showSlide(0);
+}
+document.getElementById('prev-btn').addEventListener('click',function(){showSlide(cur-1);});
+document.getElementById('next-btn').addEventListener('click',function(){showSlide(cur+1);});
+document.addEventListener('keydown',function(e){
+  if(e.key==='ArrowRight'||e.key===' '){e.preventDefault();showSlide(cur+1);}
+  if(e.key==='ArrowLeft'){e.preventDefault();showSlide(cur-1);}
+  if(e.key==='f'||e.key==='F'){toggleFS();}
+});
+var tx=0;
+document.addEventListener('touchstart',function(e){tx=e.touches[0].clientX;},{passive:true});
+document.addEventListener('touchend',function(e){var dx=e.changedTouches[0].clientX-tx;if(Math.abs(dx)>50)showSlide(dx<0?cur+1:cur-1);},{passive:true});
+function toggleFS(){
+  var btn=document.getElementById('fs-btn');
+  if(!document.fullscreenElement){
+    document.documentElement.requestFullscreen().catch(function(){});
+    btn.textContent='✕';
+  }else{document.exitFullscreen();btn.textContent='⛶';}
+}
+document.getElementById('fs-btn').addEventListener('click',toggleFS);
+document.addEventListener('fullscreenchange',function(){if(!document.fullscreenElement)document.getElementById('fs-btn').textContent='⛶';});
+render();
+</script>
+</body>
+</html>
