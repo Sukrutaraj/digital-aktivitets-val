@@ -80,6 +80,10 @@ button:active{transform:scale(0.95);}
     <div class="icon">🔗</div>
     <div class="label">Skapa länk</div>
   </div>
+  <div class="tool-btn" onclick="downloadPDF()">
+    <div class="icon">🖨️</div>
+    <div class="label">Skriv ut PDF</div>
+  </div>
 </div>
 
 <br>
@@ -399,6 +403,103 @@ function dlQRpdf() {
   load(build);
 }
 
+
+/* ===== LADDA NER PDF ===== */
+function downloadPDF(){
+  var title = document.getElementById('title').value.trim() || "Aktivitetsval";
+  var filled = slots.filter(function(s){ return s.img || s.alt; });
+  if(filled.length === 0){ alert("Lägg till minst en ruta."); return; }
+
+  // Ask format
+  var fmt = confirm("Klicka OK för A3, Avbryt för A4") ? "a3" : "a4";
+
+  function getImgDims(dataUrl, maxW, maxH){
+    return new Promise(function(resolve){
+      var img = new Image();
+      img.onload = function(){
+        var w = img.naturalWidth, h = img.naturalHeight, ratio = w/h;
+        if(w > maxW){ w = maxW; h = w/ratio; }
+        if(h > maxH){ h = maxH; w = h*ratio; }
+        resolve({w: Math.round(w), h: Math.round(h)});
+      };
+      img.onerror = function(){ resolve({w: maxW, h: maxH}); };
+      img.src = dataUrl;
+    });
+  }
+
+  function buildPDF(Lib){
+    var doc = new Lib({orientation:"landscape", unit:"mm", format: fmt});
+    var pageW = doc.internal.pageSize.getWidth();
+    var pageH = doc.internal.pageSize.getHeight();
+    var margin = 12;
+
+    // Titel
+    doc.setFillColor(245,245,245);
+    doc.rect(0, 0, pageW, 20, "F");
+    doc.setFontSize(16); doc.setFont("helvetica","bold"); doc.setTextColor(40,40,40);
+    doc.text(title, pageW/2, 13, {align:"center"});
+
+    // Grid beräkning – max 4 kolumner
+    var cols = filled.length <= 4 ? filled.length : 4;
+    var rows = Math.ceil(filled.length / cols);
+    var cellW = (pageW - margin*2) / cols;
+    var cellH = (pageH - margin - 22) / rows;
+    var imgMaxW = cellW - 8;
+    var imgMaxH = cellH - 16;
+
+    // Hämta bilddimensioner
+    var dimPromises = filled.map(function(s){
+      if(!s.img) return Promise.resolve(null);
+      return getImgDims(s.img, imgMaxW, imgMaxH);
+    });
+
+    Promise.all(dimPromises).then(function(dims){
+      for(var i = 0; i < filled.length; i++){
+        var s = filled[i];
+        var dim = dims[i];
+        var col = i % cols;
+        var row = Math.floor(i / cols);
+        var x = margin + col * cellW;
+        var y = 22 + row * cellH;
+
+        // Cellram
+        doc.setDrawColor(200,200,200); doc.setLineWidth(0.4);
+        doc.roundedRect(x+1, y+1, cellW-2, cellH-2, 2, 2);
+
+        // Bild centrerad i cellen
+        if(s.img && dim){
+          var imgX = x + (cellW - dim.w) / 2;
+          var imgY = y + 4;
+          try{ doc.addImage(s.img, "JPEG", imgX, imgY, dim.w, dim.h); }catch(e){}
+        }
+
+        // Text centrerad under bilden
+        if(s.alt){
+          doc.setFontSize(fmt === "a3" ? 13 : 10);
+          doc.setFont("helvetica","bold");
+          doc.setTextColor(40,40,40);
+          var lines = doc.splitTextToSize(s.alt, cellW - 6);
+          var textY = y + cellH - (lines.length * (fmt === "a3" ? 6 : 5)) - 2;
+          doc.text(lines, x + cellW/2, textY, {align:"center"});
+        }
+      }
+
+      // Fotrad
+      doc.setFontSize(7); doc.setFont("helvetica","normal"); doc.setTextColor(180,180,180);
+      doc.text("Daglig Verksamhet – Digital Aktivitetsval", pageW/2, pageH - 4, {align:"center"});
+
+      var name = title.replace(/[^a-zA-Z0-9 ]/g,"_");
+      doc.save(name + "_" + fmt.toUpperCase() + ".pdf");
+    });
+  }
+
+  if(typeof jsPDF!=="undefined"){ buildPDF(jsPDF); return; }
+  if(window.jspdf){ buildPDF(window.jspdf.jsPDF); return; }
+  var s = document.createElement("script");
+  s.src = "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";
+  s.onload = function(){ buildPDF(window.jspdf ? window.jspdf.jsPDF : jsPDF); };
+  document.head.appendChild(s);
+}
 </script>
 
 
